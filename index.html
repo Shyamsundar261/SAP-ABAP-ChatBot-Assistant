@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP ChatBot Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/powerbi-client/2.19.1/powerbi.min.js"></script>
+    <style>
+        /* Global Page Layout & Green Gradient */
+        body { 
+            margin: 0; padding: 0; height: 100vh; font-family: '72', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e4d2b 0%, #2d7a43 100%);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* Main Viewport */
+        #main-viewport {
+            flex: 1; margin: 20px; border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden; position: relative;
+        }
+        #report-container { width: 100%; height: 100%; display: none; background: white; }
+        #sap-frame { width: 100%; height: 100%; border: none; display: none; }
+        #welcome-screen { color: white; text-align: center; font-size: 1.2rem; padding: 20px; }
+
+        /* Floating Bubble Launcher */
+        #chat-bubble {
+            position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px;
+            background-color: #2b7c2b; border-radius: 50%; display: flex;
+            justify-content: center; align-items: center; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            cursor: pointer; z-index: 1000; transition: 0.3s;
+        }
+        #chat-bubble:hover { transform: scale(1.1); }
+        #chat-bubble img { width: 30px; filter: brightness(0) invert(1); }
+
+        /* Chat Container */
+        #chat-container { 
+            display: none; position: fixed; bottom: 110px; right: 30px;
+            width: 380px; height: 550px; background: white; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-radius: 15px; 
+            flex-direction: column; overflow: hidden; z-index: 1001;
+        }
+
+        /* Sticky Header */
+        #header { 
+            background: #2b7c2b; color: white; padding: 15px;
+            position: sticky; top: 0; z-index: 1002;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+        #header img { height: 35px; }
+        #close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 20px; }
+
+        /* Chat Window & Messages */
+        #chat-window { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 12px; border-radius: 12px; font-size: 14px; max-width: 80%; }
+        .bot { background: #e8f5e9; align-self: flex-start; color: #1b5e20; border: 1px solid #c8e6c9; }
+        .user { background: #2b7c2b; align-self: flex-end; color: white; }
+
+        .action-btn { 
+            background: #2b7c2b; color: white; border: none; padding: 10px; 
+            border-radius: 5px; cursor: pointer; margin-top: 8px; width: 100%; font-weight: bold;
+        }
+
+        #input-area { display: flex; border-top: 1px solid #eee; }
+        input { flex: 1; border: none; padding: 15px; outline: none; }
+        button#send-btn { background: #2b7c2b; color: white; border: none; padding: 0 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="main-viewport">
+        <div id="welcome-screen">
+            <h2>SAP ChatBot Assistant Workspace</h2>
+            <p>Seamlessly accessing SAP S/4HANA & Power BI Analytics.</p>
+        </div>
+        <div id="report-container"></div>
+        <iframe id="sap-frame" src=""></iframe>
+    </div>
+
+    <div id="chat-bubble" onclick="toggleChat()">
+        <img src="https://cdn-icons-png.flaticon.com/512/134/134914.png" alt="Chat">
+    </div>
+
+    <div id="chat-container">
+        <div id="header">
+            <span id="close-btn" onclick="toggleChat()">×</span>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/59/SAP_2011_logo.svg">
+            <span>SAP ChatBot Assistant</span>
+        </div>
+        <div id="chat-window">
+            <div class="msg bot">Hello! Try "Open VA03" or "Show Sales Report".</div>
+        </div>
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Type command..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleChat() {
+            const chat = document.getElementById('chat-container');
+            chat.style.display = (chat.style.display === "flex") ? "none" : "flex";
+        }
+
+        // --- SEAMLESS POWER BI EMBEDDING LOGIC ---
+        function embedPowerBI() {
+            const container = document.getElementById('report-container');
+            const sapFrame = document.getElementById('sap-frame');
+            const welcome = document.getElementById('welcome-screen');
+
+            welcome.style.display = "none";
+            sapFrame.style.display = "none";
+            container.style.display = "block";
+
+            // CONFIGURATION: In a real app, these values come from your ABAP backend
+            const models = window['powerbi-client'].models;
+            const config = {
+                type: 'report',
+                tokenType: models.TokenType.Embed, // Use Embed for seamless SSO
+                accessToken: 'YOUR_ACCESS_TOKEN',  // Generated via Azure AD/BTP
+                embedUrl: 'https://app.powerbi.com/reportEmbed?reportId=YOUR_REPORT_ID',
+                id: 'YOUR_REPORT_ID',
+                settings: {
+                    filterPaneEnabled: false,
+                    navContentPaneEnabled: true
+                }
+            };
+
+            // Grab the library and embed
+            const powerbi = window.powerbi;
+            powerbi.embed(container, config);
+            
+            addBotMessage("📊 Seamless Power BI Dashboard initialized.");
+        }
+
+        // --- SAP TRANSACTION LOGIC ---
+        function launchSAP(tcode) {
+            const frame = document.getElementById('sap-frame');
+            const container = document.getElementById('report-container');
+            const welcome = document.getElementById('welcome-screen');
+            
+            welcome.style.display = "none";
+            container.style.display = "none";
+            frame.style.display = "block";
+            frame.src = `https://<YOUR_SAP_SERVER>/sap/bc/gui/sap/its/webgui?~transaction=${tcode}`;
+            
+            addBotMessage(`✅ SAP Transaction ${tcode} loaded.`);
+        }
+
+        function addBotMessage(text) {
+            const window = document.getElementById('chat-window');
+            window.innerHTML += `<div class="msg bot">${text}</div>`;
+            window.scrollTop = window.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const window = document.getElementById('chat-window');
+            const text = input.value.trim().toUpperCase();
+            if(!text) return;
+
+            window.innerHTML += `<div class="msg user">${text}</div>`;
+            input.value = '';
+
+            if (text.includes("VA03") || text.includes("MM03")) {
+                const tcode = text.includes("VA03") ? "VA03" : "MM03";
+                window.innerHTML += `
+                    <div class="msg bot">
+                        Launching SAP GUI for ${tcode}...
+                        <button class="action-btn" onclick="launchSAP('${tcode}')">View in Workspace</button>
+                    </div>`;
+            } else if (text.includes("REPORT") || text.includes("SALES")) {
+                window.innerHTML += `
+                    <div class="msg bot">
+                        Connecting to Power BI Service...
+                        <button class="action-btn" onclick="embedPowerBI()">Open Seamless Analytics</button>
+                    </div>`;
+            } else {
+                addBotMessage("I can open SAP transactions or Power BI reports. Try 'Open VA03'.");
+            }
+            window.scrollTop = window.scrollHeight;
+        }
+    </script>
+</body>
+</html>
