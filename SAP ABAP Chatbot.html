@@ -190,3 +190,161 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP ChatBot Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/powerbi-client/2.19.1/powerbi.min.js"></script>
+    <style>
+        body { 
+            margin: 0; padding: 0; height: 100vh; font-family: '72', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e4d2b 0%, #2d7a43 100%);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* Workspace Area */
+        #main-viewport {
+            flex: 1; margin: 20px; border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden; position: relative;
+        }
+
+        /* Power BI Container */
+        #report-container { width: 100%; height: 100%; display: none; background: white; }
+        #sap-frame { width: 100%; height: 100%; border: none; display: none; }
+        
+        /* Power BI Sign-In Overlay */
+        #pbi-login-overlay {
+            display: none; text-align: center; color: white; background: rgba(0,0,0,0.8);
+            position: absolute; width: 100%; height: 100%; 
+            flex-direction: column; justify-content: center; align-items: center; z-index: 10;
+        }
+
+        /* UI Elements */
+        #chat-bubble {
+            position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px;
+            background-color: #2b7c2b; border-radius: 50%; display: flex;
+            justify-content: center; align-items: center; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            cursor: pointer; z-index: 1000;
+        }
+        #chat-container { 
+            display: none; position: fixed; bottom: 110px; right: 30px;
+            width: 380px; height: 550px; background: white; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-radius: 15px; 
+            flex-direction: column; overflow: hidden; z-index: 1001;
+        }
+        #header { background: #2b7c2b; color: white; padding: 15px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        #header img { height: 35px; }
+        #chat-window { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 12px; border-radius: 12px; font-size: 14px; max-width: 80%; }
+        .bot { background: #e8f5e9; align-self: flex-start; color: #1b5e20; }
+        .user { background: #2b7c2b; align-self: flex-end; color: white; }
+        .action-btn { background: #2b7c2b; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; margin-top: 8px; width: 100%; font-weight: bold; }
+        #input-area { display: flex; border-top: 1px solid #eee; }
+        input { flex: 1; border: none; padding: 15px; outline: none; }
+        #send-btn { background: #2b7c2b; color: white; border: none; padding: 0 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="main-viewport">
+        <div id="pbi-login-overlay">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/cf/Power_BI_Logo.svg" width="50" style="margin-bottom:15px;">
+            <h3>Microsoft Authentication Required</h3>
+            <p>Please sign in to view the Sales Analytics report.</p>
+            <button class="action-btn" style="width:200px; background:#f39c12;" onclick="handlePBILogin()">Sign In to Power BI</button>
+        </div>
+
+        <div id="welcome-screen" style="color:white;">
+            <h2>SAP ChatBot Assistant Workspace</h2>
+            <p>Ready for SAP Transactions or Power BI Analytics.</p>
+        </div>
+        <div id="report-container"></div>
+        <iframe id="sap-frame" src=""></iframe>
+    </div>
+
+    <div id="chat-bubble" onclick="toggleChat()">
+        <img src="https://cdn-icons-png.flaticon.com/512/134/134914.png" width="30" style="filter: brightness(0) invert(1);">
+    </div>
+
+    <div id="chat-container">
+        <div id="header">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/59/SAP_2011_logo.svg">
+            <span>SAP ChatBot Assistant</span>
+        </div>
+        <div id="chat-window">
+            <div class="msg bot">Hello! I can help you open <b>SAP Transactions</b> or <b>Power BI Reports</b>.</div>
+        </div>
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Type 'Show Report'..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleChat() {
+            const chat = document.getElementById('chat-container');
+            chat.style.display = (chat.style.display === "flex") ? "none" : "flex";
+        }
+
+        // 1. Logic to show the Sign-In Page
+        function showPBILogin() {
+            document.getElementById('welcome-screen').style.display = "none";
+            document.getElementById('pbi-login-overlay').style.display = "flex";
+            document.getElementById('report-container').style.display = "none";
+        }
+
+        // 2. Function called when User clicks "Sign In" button
+        function handlePBILogin() {
+            // This opens the standard Microsoft Login in a popup
+            const loginUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
+            window.open(loginUrl, "PowerBILogin", "width=500,height=600");
+            
+            // In a real app, you would listen for the token here. 
+            // For now, we assume the user logs in and we attempt to reload the report.
+            setTimeout(() => {
+                document.getElementById('pbi-login-overlay').style.display = "none";
+                document.getElementById('report-container').style.display = "block";
+                loadReport();
+            }, 2000);
+        }
+
+        function loadReport() {
+            const models = window['powerbi-client'].models;
+            const config = {
+                type: 'report',
+                embedUrl: 'https://app.powerbi.com/reportEmbed?reportId=YOUR_REPORT_ID', // Replace with your ID
+                id: 'YOUR_REPORT_ID',
+                settings: { filterPaneEnabled: false, navContentPaneEnabled: true }
+            };
+            const powerbi = window.powerbi;
+            powerbi.embed(document.getElementById('report-container'), config);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const windowMsg = document.getElementById('chat-window');
+            const text = input.value.trim().toUpperCase();
+            if(!text) return;
+
+            windowMsg.innerHTML += `<div class="msg user">${text}</div>`;
+            input.value = '';
+
+            if (text.includes("REPORT") || text.includes("ANALYTICS")) {
+                windowMsg.innerHTML += `<div class="msg bot">I am preparing the Analytics dashboard. You may need to sign in.</div>`;
+                showPBILogin();
+            } else if (text.includes("VA03")) {
+                document.getElementById('welcome-screen').style.display = "none";
+                document.getElementById('pbi-login-overlay').style.display = "none";
+                document.getElementById('sap-frame').style.display = "block";
+                document.getElementById('sap-frame').src = "https://<YOUR_SAP_SERVER>/sap/bc/gui/sap/its/webgui?~transaction=VA03";
+            }
+            windowMsg.scrollTop = windowMsg.scrollHeight;
+        }
+    </script>
+</body>
+</html>
